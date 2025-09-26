@@ -30,6 +30,10 @@ class CarmeraProcessor:
         self.face_enable = True
         self.crossLine_enable = True
 
+        # camer reconnection
+        self.consecutive_failures = 0
+        self.max_failures = 10
+
     def _setup_camera_properties(self):
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.frame_size[0])
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.frame_size[1])
@@ -72,7 +76,6 @@ class CarmeraProcessor:
                     httpManager.update_frame('crossline', crossline_frame)
                     
             # tracker_frame = self.motion_tracker.start(frame.copy())
-            # print("update_frame")
             httpManager.update_frame('current', frame)
             cv2.putText(frame, f"FPS: {self.get_fps()}", (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
             if not self.headless: cv2.imshow("Camera", frame)
@@ -93,26 +96,25 @@ class CarmeraProcessor:
         return True
 
     def start(self):
-        consecutive_failures = 0
-        max_failures = 10
+        
         
         while True:
             try:
                 ret, frame = self.cap.read()
                 if not ret:
-                    consecutive_failures += 1
-                    print(f"讀取幀失敗 ({consecutive_failures}/{max_failures})")
+                    self.consecutive_failures += 1
+                    print(f"讀取幀失敗 ({self.consecutive_failures}/{self.max_failures})")
                     
-                    if consecutive_failures >= max_failures:
+                    if self.consecutive_failures >= self.max_failures:
                         print("連續讀取失敗過多，嘗試重新連接...")
                         self.cap.release()
                         time.sleep(2)
                         self.cap = cv2.VideoCapture(os.environ.get("CAMERA_INDEX", 0))
                         self._setup_camera_properties()
-                        consecutive_failures = 0
+                        self.consecutive_failures = 0
                         continue
                 else:
-                    consecutive_failures = 0
+                    self.consecutive_failures = 0
 
                 if self.flip_frame:
                     frame = cv2.flip(frame, 1)
@@ -124,7 +126,7 @@ class CarmeraProcessor:
 
             except Exception as e:
                 print(f"攝影機讀取錯誤: {e}")
-                consecutive_failures += 1
+                self.consecutive_failures += 1
                 time.sleep(0.1)  # 短暫等待後重試
                 continue
             

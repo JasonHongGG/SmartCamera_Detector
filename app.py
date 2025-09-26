@@ -18,7 +18,7 @@ class App:
     def printPrefixInfo(self):
         print("="*50)
         print(f"攝像頭索引: {os.environ.get('CAMERA_INDEX', 0)}")
-        print(f"Web 服務地址: http://127.0.0.1:3000")
+        print(f"Web 服務地址: http://127.0.0.1:self.")
         print("按 Ctrl+C 停止系統")
         print("="*50)
 
@@ -31,8 +31,6 @@ class App:
         time.sleep(2)
         
         # 啟動 Flask 服務器
-        print("啟動 Flask Web 服務器...")
-        print("請訪問: http://127.0.0.1:5000")
         cameraServer = CameraServer(self.processor)
         cameraServer.app.run(host='127.0.0.1', port=5000, debug=False, threaded=True)
 
