@@ -51,7 +51,7 @@ class HttpManager:
             self.frames[stream_type] = frame.copy()
 
     # 為 Http 提供畫面
-    def get_frame(self, stream_type='original'):
+    def get_frame(self, stream_type='current'):
         with self.locks[stream_type]:
             frame = self.frames.get(stream_type)
             if frame is not None:
@@ -60,7 +60,7 @@ class HttpManager:
                     return buffer.tobytes()
         return None
 
-    def generate_frames(self, stream_type='original'):
+    def generate_frames(self, stream_type='current'):
         while True:
             frame_bytes = self.get_frame(stream_type)
             if frame_bytes:

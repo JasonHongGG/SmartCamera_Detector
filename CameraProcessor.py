@@ -13,11 +13,12 @@ from dotenv import load_dotenv
 
 class CarmeraProcessor:
     def __init__(self, camera_index=0, width=640, height=480, headless=False):
+        self.frame_size = (width, height)
         self.flip_frame = os.getenv("FLIP_FRAME", "false").lower() in ("true", "1", "yes", "on")
         self.frame_times = []
         self.cap = cv2.VideoCapture(camera_index)
-        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
-        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
+        self._setup_camera_properties()
+        
         self.headless = headless
         self.motion_detector = MotionDetector(self.headless)
         self.motion_tracker = MotionTracker(self.headless)
@@ -29,6 +30,16 @@ class CarmeraProcessor:
         self.face_enable = True
         self.crossLine_enable = True
 
+    def _setup_camera_properties(self):
+        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.frame_size[0])
+        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.frame_size[1])
+        self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+        self.cap.set(cv2.CAP_PROP_FPS, 15)
+        if hasattr(cv2, 'CAP_PROP_OPEN_TIMEOUT_MSEC'):
+            self.cap.set(cv2.CAP_PROP_OPEN_TIMEOUT_MSEC, 5000)
+        if hasattr(cv2, 'CAP_PROP_READ_TIMEOUT_MSEC'):
+            self.cap.set(cv2.CAP_PROP_READ_TIMEOUT_MSEC, 3000)
+
     def get_fps(self):
         now = time.time()
         self.frame_times.append(now)
@@ -37,36 +48,36 @@ class CarmeraProcessor:
         return len(self.frame_times)
 
     def Process(self, frame):
-        if self.motion_enable:
-            motion_detected, motion_frame, thresh = self.motion_detector.detect(frame.copy())
-            httpManager.update_frame('motion', motion_frame)
-            httpManager.update_motion_info(motion_detected)
+        try:
+            if self.motion_enable:
+                motion_detected, motion_frame, thresh = self.motion_detector.detect(frame.copy())
+                httpManager.update_frame('motion', motion_frame)
+                httpManager.update_motion_info(motion_detected)
 
-        if self.face_enable or self.crossLine_enable:
-            face_frame, face_info = self.face_recognizer.start(frame.copy())
-            httpManager.update_frame('face', face_frame)
-            httpManager.update_face_info(face_info)
+            if self.face_enable or self.crossLine_enable:
+                face_frame, face_info = self.face_recognizer.start(frame.copy())
+                httpManager.update_frame('face', face_frame)
+                httpManager.update_face_info(face_info)
 
-            if self.crossLine_enable:
-                #Cross Line Detection
-                crossline_frame = frame.copy()
-                for (x1, y1, x2, y2, track_id, name) in face_info:
-                    center = (int((x1 + x2) / 2), int((y1 + y2) / 2))
-                    cv2.circle(crossline_frame, center, 5, (255, 0, 0), -1)
-                    if(self.crossLineMgr.is_cross_line(center, track_id)):
-                        print(f"{track_id} {name}: Cross Line Detected! {center}")
-                        httpManager.update_crossline_info(f"{name}")
-                self.crossLineMgr.draw_line(crossline_frame)
-                httpManager.update_frame('crossline', crossline_frame)
-                
-
-
-            
-        # tracker_frame = self.motion_tracker.start(frame.copy())
-
-        httpManager.update_frame('current', frame)
-        cv2.putText(frame, f"FPS: {self.get_fps()}", (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
-        if not self.headless: cv2.imshow("Camera", frame)
+                if self.crossLine_enable:
+                    #Cross Line Detection
+                    crossline_frame = frame.copy()
+                    for (x1, y1, x2, y2, track_id, name) in face_info:
+                        center = (int((x1 + x2) / 2), int((y1 + y2) / 2))
+                        cv2.circle(crossline_frame, center, 5, (255, 0, 0), -1)
+                        if(self.crossLineMgr.is_cross_line(center, track_id)):
+                            print(f"{track_id} {name}: Cross Line Detected! {center}")
+                            httpManager.update_crossline_info(f"{name}")
+                    self.crossLineMgr.draw_line(crossline_frame)
+                    httpManager.update_frame('crossline', crossline_frame)
+                    
+            # tracker_frame = self.motion_tracker.start(frame.copy())
+            # print("update_frame")
+            httpManager.update_frame('current', frame)
+            cv2.putText(frame, f"FPS: {self.get_fps()}", (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+            if not self.headless: cv2.imshow("Camera", frame)
+        except Exception as e:
+            print(f"Process frame error: {e}")
 
     def keyHandler(self, frame):
         if self.headless:
@@ -82,17 +93,40 @@ class CarmeraProcessor:
         return True
 
     def start(self):
+        consecutive_failures = 0
+        max_failures = 10
+        
         while True:
-            ret, frame = self.cap.read()
-            if not ret: break
+            try:
+                ret, frame = self.cap.read()
+                if not ret:
+                    consecutive_failures += 1
+                    print(f"讀取幀失敗 ({consecutive_failures}/{max_failures})")
+                    
+                    if consecutive_failures >= max_failures:
+                        print("連續讀取失敗過多，嘗試重新連接...")
+                        self.cap.release()
+                        time.sleep(2)
+                        self.cap = cv2.VideoCapture(os.environ.get("CAMERA_INDEX", 0))
+                        self._setup_camera_properties()
+                        consecutive_failures = 0
+                        continue
+                else:
+                    consecutive_failures = 0
 
-            if self.flip_frame:
-                frame = cv2.flip(frame, 1)
+                if self.flip_frame:
+                    frame = cv2.flip(frame, 1)
 
-            if not self.keyHandler(frame):
-                break
+                if not self.keyHandler(frame):
+                    break
 
-            self.Process(frame)
+                self.Process(frame)
+
+            except Exception as e:
+                print(f"攝影機讀取錯誤: {e}")
+                consecutive_failures += 1
+                time.sleep(0.1)  # 短暫等待後重試
+                continue
             
         self.cap.release()
         if not self.headless:

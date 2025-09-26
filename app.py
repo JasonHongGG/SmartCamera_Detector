@@ -32,9 +32,9 @@ class App:
         
         # 啟動 Flask 服務器
         print("啟動 Flask Web 服務器...")
-        print("請訪問: http://127.0.0.1:4000")
+        print("請訪問: http://127.0.0.1:5000")
         cameraServer = CameraServer(self.processor)
-        cameraServer.app.run(host='127.0.0.1', port=4000, debug=False, threaded=True)
+        cameraServer.app.run(host='127.0.0.1', port=5000, debug=False, threaded=True)
 
 if __name__ == "__main__":
     # 載入環境變數
