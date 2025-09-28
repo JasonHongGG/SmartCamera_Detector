@@ -44,9 +44,8 @@ class MotionDetector:
         if self.alarmCounter > self.alarm_threshold:
             motion_detected_flag = True
             self.alarmCounter = 0
-            threading.Thread(target=LineAlarmManager.triggerAlarm, args=(frame,)).start()
+            threading.Thread(target=LineAlarmManager.triggerAlarm, args=(frame.copy(), "Motion Detector : 有動靜!!!", self.alarmTriggerCounter)).start()
             self.alarmTriggerCounter += 1
-            print(f"Alarm Triggered! {self.alarmTriggerCounter}")
             
         # Draw
         contours, _ = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)

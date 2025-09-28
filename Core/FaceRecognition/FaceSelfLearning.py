@@ -1,3 +1,4 @@
+import datetime
 import os
 import cv2
 import numpy as np
@@ -7,7 +8,7 @@ class FaceSelfLearning:
     def __init__(self, CurFilePath = os.path.dirname(os.path.abspath(__file__)), frame_resize=0.25):
         self.CurFilePath = CurFilePath
         self.frame_resize = frame_resize
-        self.learning_cache = {}  # {track_id: {"candidate_name": str, "distances": [float], "embeddings": [np.array], "crops": [np.array]}}
+        self.learning_cache = {}  # {track_id: {"candidate_name": str, "distances": [float] "crops": [np.array]}}
         self.learning_threshold_min = 1.1  # 最小距離閾值（原本的識別閾值）
         self.learning_threshold_max = 2.0  # 最大距離閾值
         self.learning_consecutive_count = 5  # 需要連續匹配的次數
@@ -20,13 +21,12 @@ class FaceSelfLearning:
             return self.learning_cache[track_id]["candidate_name"]
         return "None"
 
-    def learning(self, super, known_dir, track_id, candidate_name, distance, embedding, crop_frame):
+    def learning(self, super, known_dir, track_id, candidate_name, distance, crop_frame):
         if track_id not in self.learning_cache:
             # 初始化學習記錄
             self.learning_cache[track_id] = {
                 "candidate_name": candidate_name,
                 "distances": [distance],
-                "embeddings": [embedding],
                 "crops": [crop_frame.copy()]
             }
             print(f"[學習] Track {track_id} 開始學習候選人: {candidate_name}, 距離: {distance:.4f}")
@@ -35,7 +35,6 @@ class FaceSelfLearning:
             if self.learning_cache[track_id]["candidate_name"] == candidate_name:
                 # 累積證據
                 self.learning_cache[track_id]["distances"].append(distance)
-                self.learning_cache[track_id]["embeddings"].append(embedding)
                 self.learning_cache[track_id]["crops"].append(crop_frame.copy())
                 
                 count = len(self.learning_cache[track_id]["distances"])
@@ -56,7 +55,6 @@ class FaceSelfLearning:
                 self.learning_cache[track_id] = {
                     "candidate_name": candidate_name,
                     "distances": [distance],
-                    "embeddings": [embedding],
                     "crops": [crop_frame.copy()]
                 }
 
@@ -77,9 +75,9 @@ class FaceSelfLearning:
         person_dir.mkdir(exist_ok=True)
         
         # 生成唯一檔案名
-        import time
-        timestamp = int(time.time())
-        filename = f"learned_{timestamp}_{track_id}.jpg"
+        now = datetime.datetime.now()
+        timestamp = now.strftime("%Y-%m-%d_%H-%M-%S")
+        filename = f"learned_{track_id}_{timestamp}.png"
         save_path = person_dir / filename
         
         # 放大裁切的人臉回原始尺寸

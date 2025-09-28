@@ -9,7 +9,7 @@ class Capture:
         file_path = os.path.join(base_dir, filename)
         file_path = os.path.normpath(file_path)
 
-        small_frame = cv2.resize(frame, (0, 0), fx=0.25, fy=0.25)
-        cv2.imwrite(file_path, small_frame)
+        # resize_frame = cv2.resize(frame, (0, 0), fx=0.25, fy=0.25)
+        cv2.imwrite(file_path, frame)
         print(f"Image saved as {file_path}")
         

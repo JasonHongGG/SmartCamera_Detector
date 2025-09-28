@@ -7,7 +7,7 @@ class CrossLineManager:
         self.drawing = False
         self.prev_center = {} #存儲每個 track_id 的前一個位置
 
-        if not self.headless:
+        if self.headless:
             self.lines = []  # 初始化是為了給 opencv mouse callback 使用，否則預設沒有任何線段
             cv2.namedWindow(cv_window_name)
             cv2.setMouseCallback(cv_window_name, self.mouse_callback)

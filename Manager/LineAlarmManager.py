@@ -12,8 +12,8 @@ class LineAlarmManager:
         pass
     
     @staticmethod
-    def triggerAlarm(frame, msg = ""):
-        print(f"Alarm Triggered!")
+    def triggerAlarm(frame, msg = "", counter=-1):
+        print(f"Alarm Triggered! {counter if counter != -1 else ''}")
         if not LineAlarmManager.alarm_flag: return
         # 儲存並上傳圖片
         success, encoded_image = cv2.imencode('.png', frame)

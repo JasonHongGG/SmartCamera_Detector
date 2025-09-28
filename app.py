@@ -32,7 +32,7 @@ class App:
         
         # 啟動 Flask 服務器
         cameraServer = CameraServer(self.processor)
-        cameraServer.app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)
+        cameraServer.app.run(host='0.0.0.0', port=os.environ.get("DETECTOR_PORT", 5001), debug=False, threaded=True)
 
 if __name__ == "__main__":
     # 載入環境變數

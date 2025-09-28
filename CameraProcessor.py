@@ -13,36 +13,37 @@ from dotenv import load_dotenv
 
 class CarmeraProcessor:
     def __init__(self, camera_index=0, width=640, height=480, headless=False):
+        self.headless = headless
         self.frame_size = (width, height)
         self.flip_frame = os.getenv("FLIP_FRAME", "false").lower() in ("true", "1", "yes", "on")
         self.frame_times = []
         self.cap = cv2.VideoCapture(camera_index)
-        self._setup_camera_properties()
+        self.setup_camera_properties()
         
-        self.headless = headless
         self.motion_detector = MotionDetector(self.headless)
         self.motion_tracker = MotionTracker(self.headless)
         self.face_recognizer = FaceRecognition(self.headless)
         self.crossLineMgr = CrossLineManager(cv_window_name = "Face Recognition", headless = self.headless)
         
         # http parameter
-        self.motion_enable = True
+        self.motion_enable = False
         self.face_enable = True
-        self.crossLine_enable = True
+        self.crossLine_enable = False
 
-        # camer reconnection
+        # camera reconnection
         self.consecutive_failures = 0
         self.max_failures = 10
 
-    def _setup_camera_properties(self):
+    def setup_camera_properties(self):
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.frame_size[0])
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.frame_size[1])
-        self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
-        self.cap.set(cv2.CAP_PROP_FPS, 15)
-        if hasattr(cv2, 'CAP_PROP_OPEN_TIMEOUT_MSEC'):
-            self.cap.set(cv2.CAP_PROP_OPEN_TIMEOUT_MSEC, 5000)
-        if hasattr(cv2, 'CAP_PROP_READ_TIMEOUT_MSEC'):
-            self.cap.set(cv2.CAP_PROP_READ_TIMEOUT_MSEC, 3000)
+        if self.headless:
+            self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+            self.cap.set(cv2.CAP_PROP_FPS, 15)
+            if hasattr(cv2, 'CAP_PROP_OPEN_TIMEOUT_MSEC'):
+                self.cap.set(cv2.CAP_PROP_OPEN_TIMEOUT_MSEC, 5000)
+            if hasattr(cv2, 'CAP_PROP_READ_TIMEOUT_MSEC'):
+                self.cap.set(cv2.CAP_PROP_READ_TIMEOUT_MSEC, 3000)
 
     def get_fps(self):
         now = time.time()
@@ -95,26 +96,30 @@ class CarmeraProcessor:
         KeyboardManager.changeKeyboardLayout(KeyboardLayoutCode.ENGLISH.value)
         return True
 
+    def reconnectionChecker(self, ret):
+        if not ret:
+            self.consecutive_failures += 1
+            print(f"讀取幀失敗 ({self.consecutive_failures}/{self.max_failures})")
+            
+            if self.consecutive_failures >= self.max_failures:
+                print("連續讀取失敗過多，嘗試重新連接...")
+                self.cap.release()
+                time.sleep(2)
+                self.cap = cv2.VideoCapture(os.environ.get("CAMERA_INDEX", 0))
+                self._setup_camera_properties()
+                self.consecutive_failures = 0
+                return True
+        else:
+            self.consecutive_failures = 0
+            
+        return False
+
     def start(self):
-        
-        
         while True:
             try:
                 ret, frame = self.cap.read()
-                if not ret:
-                    self.consecutive_failures += 1
-                    print(f"讀取幀失敗 ({self.consecutive_failures}/{self.max_failures})")
-                    
-                    if self.consecutive_failures >= self.max_failures:
-                        print("連續讀取失敗過多，嘗試重新連接...")
-                        self.cap.release()
-                        time.sleep(2)
-                        self.cap = cv2.VideoCapture(os.environ.get("CAMERA_INDEX", 0))
-                        self._setup_camera_properties()
-                        self.consecutive_failures = 0
-                        continue
-                else:
-                    self.consecutive_failures = 0
+                if self.reconnectionChecker(ret):
+                    continue
 
                 if self.flip_frame:
                     frame = cv2.flip(frame, 1)

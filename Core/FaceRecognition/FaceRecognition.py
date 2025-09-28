@@ -24,7 +24,7 @@ class FaceRecognition:
         self.known_encodings = []
         self.known_names = []
         self.faceRecognition_threshold = 1.1        # 越小越嚴格 (0.-0.6 常見)
-        self.frame_resize = 0.25    # 為了速度，把影格縮小
+        self.frame_resize = 0.5    # 為了速度，把影格縮小 
         self.CurFilePath = os.path.dirname(os.path.abspath(__file__))
         self.fontSize = 25
         self.font = ImageFont.truetype(os.path.join(self.CurFilePath, "Font/NotoSansTC-Medium.ttf"), self.fontSize, encoding="utf-8")
@@ -71,6 +71,34 @@ class FaceRecognition:
             self.faiss_index.add(np.array(self.known_embeddings, dtype=np.float32))
             print(f"[完成] 已建立 FAISS 索引，共 {len(self.known_embeddings)} 個人臉")
 
+    def getCrop(self, x1, y1, x2, y2, frame, small_frame, frame_resize):
+        # small
+        if x1 < 0: x1 = 0
+        if y1 < 0: y1 = 0
+        if x2 > small_frame.shape[1]: x2 = small_frame.shape[1]
+        if y2 > small_frame.shape[0]: y2 = small_frame.shape[0]
+        
+        small_crop = small_frame[y1:y2, x1:x2]
+        
+        # origin (座標需要還原到原始比例)
+        orig_x1 = int(x1 / frame_resize)
+        orig_y1 = int(y1 / frame_resize)
+        orig_x2 = int(x2 / frame_resize)
+        orig_y2 = int(y2 / frame_resize)
+        
+        if orig_x1 < 0: orig_x1 = 0
+        if orig_y1 < 0: orig_y1 = 0
+        if orig_x2 > frame.shape[1]: orig_x2 = frame.shape[1]
+        if orig_y2 > frame.shape[0]: orig_y2 = frame.shape[0]
+        
+        crop = frame[orig_y1:orig_y2, orig_x1:orig_x2]
+        
+        if not self.headless:
+            cv2.imshow("Crop", crop)
+            cv2.imshow("Frame Crop", crop)
+        
+        return small_crop, crop
+
     def recognizeFaces(self, frame):
         small_frame = cv2.resize(frame, (0,0), fx=self.frame_resize, fy=self.frame_resize)
 
@@ -89,19 +117,10 @@ class FaceRecognition:
         for (x1, y1, x2, y2, track_id) in tracks:
             # 如果沒有 cache 或是 name 為 Unknown，才進行比對
             if track_id not in self.face_cache or self.face_cache[track_id]["name"] == "Unknown":
-                # 避免超過邊界
-                if x1 < 0: x1 = 0
-                if y1 < 0: y1 = 0
-                if x2 > small_frame.shape[1]: x2 = small_frame.shape[1]
-                if y2 > small_frame.shape[0]: y2 = small_frame.shape[0]
-                
-                # 裁切人臉
-                crop = small_frame[y1:y2, x1:x2]
-                if not self.headless:
-                    cv2.imshow("Crop", crop)
+                small_crop, crop = self.getCrop(int(x1), int(y1), int(x2), int(y2), frame, small_frame, self.frame_resize)
                 
                 # 抽特徵 & 比對
-                face = self.face_app.get(crop)
+                face = self.face_app.get(small_crop)
                 if len(face) > 0:
                     emb = face[0].normed_embedding.astype('float32')
                     name = "Unknown"
@@ -115,7 +134,7 @@ class FaceRecognition:
                                 threading.Thread(target=LineAlarmManager.triggerAlarm, args=(frame.copy(), name)).start() # alarm 傳遞的是全新的 frame，避免被之後的繪畫影響
                             elif D[0][0] < self.learning_threshold:  # 2.0 在學習範圍內
                                 candidate_name = self.known_names[I[0][0]]
-                                self.faceSelfLearning.learning(self, self.known_dir, track_id, candidate_name, D[0][0], emb, crop)
+                                self.faceSelfLearning.learning(self, self.known_dir, track_id, candidate_name, D[0][0], crop)
                                 
                         else:
                             print(f"[錯誤] 無效的索引 {I[0][0]}，超出已知人臉數量 {len(self.known_names)}。正在重建 FAISS 索引...")
