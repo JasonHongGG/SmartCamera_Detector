@@ -12,9 +12,10 @@ from dotenv import load_dotenv
 
 
 class CarmeraProcessor:
-    def __init__(self, camera_index=0, width=640, height=480, headless=False):
+    def __init__(self, camera_index=0, headless=False):
         self.headless = headless
-        self.frame_size = (width, height)
+        self.current_frame_size = None  # 當前實際解析度
+        self.camera_index = camera_index
         self.flip_frame = os.getenv("FLIP_FRAME", "false").lower() in ("true", "1", "yes", "on")
         self.frame_times = []
         self.cap = cv2.VideoCapture(camera_index)
@@ -35,8 +36,12 @@ class CarmeraProcessor:
         self.max_failures = 10
 
     def setup_camera_properties(self):
-        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.frame_size[0])
-        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.frame_size[1])
+        # 對於網路串流，不強制設定解析度（讓伺服器決定）
+        if not str(self.camera_index).startswith(('http://', 'https://', 'rtsp://')):
+            # 只對本地攝影機設定解析度
+            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+            self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+        
         if self.headless:
             self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
             self.cap.set(cv2.CAP_PROP_FPS, 15)
@@ -51,6 +56,23 @@ class CarmeraProcessor:
         # 只保留最近 1 秒的時間戳
         self.frame_times = [t for t in self.frame_times if now - t < 1.0]
         return len(self.frame_times)
+    
+    def check_resolution_change(self, frame):
+        if frame is None:
+            return False
+            
+        current_height, current_width = frame.shape[:2]
+        new_size = (current_width, current_height)
+        
+        if self.current_frame_size != new_size:
+            print(f"偵測到解析度變化: {self.current_frame_size} -> {new_size}")
+            self.current_frame_size = new_size
+            
+            # 重新初始化受解析度影響的組件
+            self.motion_detector.pre_frame = None
+            
+            return True
+        return False
 
     def Process(self, frame):
         try:
@@ -105,9 +127,10 @@ class CarmeraProcessor:
                 print("連續讀取失敗過多，嘗試重新連接...")
                 self.cap.release()
                 time.sleep(2)
-                self.cap = cv2.VideoCapture(os.environ.get("CAMERA_INDEX", 0))
-                self._setup_camera_properties()
+                self.cap = cv2.VideoCapture(self.camera_index)
+                self.setup_camera_properties()
                 self.consecutive_failures = 0
+                self.current_frame_size = None
                 return True
         else:
             self.consecutive_failures = 0
@@ -118,8 +141,15 @@ class CarmeraProcessor:
         while True:
             try:
                 ret, frame = self.cap.read()
+                
                 if self.reconnectionChecker(ret):
                     continue
+                
+                if frame is None:
+                    continue
+
+                # 檢查解析度變化
+                self.check_resolution_change(frame)
 
                 if self.flip_frame:
                     frame = cv2.flip(frame, 1)
@@ -131,6 +161,7 @@ class CarmeraProcessor:
 
             except Exception as e:
                 print(f"攝影機讀取錯誤: {e}")
+                print(f"幀資訊: {frame.shape if frame is not None else 'None'}")
                 self.consecutive_failures += 1
                 time.sleep(0.1)  # 短暫等待後重試
                 continue

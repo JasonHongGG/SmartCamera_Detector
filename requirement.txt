@@ -1,6 +1,5 @@
 python-dotenv
 opencv-python
-imutils
 requests
 cloudinary
 ultralytics
