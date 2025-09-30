@@ -2,6 +2,7 @@ import cv2
 import imutils
 import threading
 from Manager.LineAlarmManager import LineAlarmManager
+from Storage.Storage import Storage # TODO: REMOVE
 
 class MotionDetector:
     def __init__(self, headless=False, color_threshold=25, motion_threshold=10000, alarm_threshold=20, min_area=500):
@@ -12,6 +13,7 @@ class MotionDetector:
         self.min_area = min_area # 最小面積 (>min_area) 才會被視為移動物體
         self.pre_frame = None
         self.alarmCounter = 0
+        self.alarmCounterForDisplay = 0
         self.alarmTriggerCounter = 0
 
     def detect(self, frame):
@@ -32,15 +34,28 @@ class MotionDetector:
         self.pre_frame = gray
 
         # 動作的強度
-        cv2.putText(frame, f"Threshold: {thresh.sum()}", (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
         if thresh.sum() > self.motion_threshold: 
             self.alarmCounter += 1
         else:
             if self.alarmCounter > 0:
                 self.alarmCounter -= 1
 
-        # Draw
-        contours, _ = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        # 動作的持續時間
+        self.alarmCounterForDisplay = self.alarmCounter
+        if self.alarmCounter > self.alarm_threshold:
+            motion_detected_flag = True
+            self.alarmCounter = 0
+            threading.Thread(target=LineAlarmManager.triggerAlarm, args=(frame.copy(), "Motion Detector : 有動靜!!!", self.alarmTriggerCounter)).start()
+            self.alarmTriggerCounter += 1
+        
+        
+        return motion_detected_flag, frame, thresh
+    
+    def draw(self, frame, thresh):
+        cv2.putText(frame, f"Threshold: {thresh.sum()}", (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+        cv2.putText(frame, f"Counter: {self.alarmCounterForDisplay}", (10, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+        
+        contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         for contour in contours:
             if cv2.contourArea(contour) < self.min_area:
                 continue
@@ -48,18 +63,13 @@ class MotionDetector:
             # draw bounding box
             (x, y, w, h) = cv2.boundingRect(contour)
             cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+    
+    def start(self, frame):
+        motion_detected, frame, thresh = self.detect(frame)
+        self.draw(frame, thresh)
 
         if not self.headless:
             cv2.imshow("Motion Detection Threshold", thresh)
             cv2.imshow("Motion Detection", frame)
 
-
-        # 動作的持續時間
-        cv2.putText(frame, f"Counter: {self.alarmCounter}", (10, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
-        if self.alarmCounter > self.alarm_threshold:
-            motion_detected_flag = True
-            self.alarmCounter = 0
-            threading.Thread(target=LineAlarmManager.triggerAlarm, args=(frame.copy(), "Motion Detector : 有動靜!!!", self.alarmTriggerCounter)).start()
-            self.alarmTriggerCounter += 1
-
-        return motion_detected_flag, frame, thresh
+        return motion_detected, frame, thresh

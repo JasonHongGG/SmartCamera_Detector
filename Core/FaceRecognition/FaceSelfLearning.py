@@ -5,9 +5,11 @@ import numpy as np
 from pathlib import Path
 
 class FaceSelfLearning:
-    def __init__(self, CurFilePath = os.path.dirname(os.path.abspath(__file__)), frame_resize=0.25):
-        self.CurFilePath = CurFilePath
-        self.frame_resize = frame_resize
+    def __init__(self, known_path = ""):
+        if known_path == "":
+            raise ValueError("known_path 不能為空字串！請提供有效的人臉資料庫路徑。")
+            
+        self.known_path = known_path
         self.learning_cache = {}  # {track_id: {"candidate_name": str, "distances": [float] "crops": [np.array]}}
         self.learning_threshold_min = 1.1  # 最小距離閾值（原本的識別閾值）
         self.learning_threshold_max = 2.0  # 最大距離閾值
@@ -71,7 +73,7 @@ class FaceSelfLearning:
         best_distance = learning_data["distances"][best_idx]
         
         # 保存圖片到對應人名資料夾
-        person_dir = Path(self.CurFilePath) / "KnownFaces" / candidate_name
+        person_dir = Path(self.known_path) / candidate_name
         person_dir.mkdir(exist_ok=True)
         
         # 生成唯一檔案名
@@ -80,9 +82,8 @@ class FaceSelfLearning:
         filename = f"learned_{track_id}_{timestamp}.png"
         save_path = person_dir / filename
         
-        # 放大裁切的人臉回原始尺寸
-        original_crop = cv2.resize(best_crop, (0, 0), fx=1/self.frame_resize, fy=1/self.frame_resize)
-        cv2.imwrite(str(save_path), original_crop)
+        # 儲存
+        cv2.imwrite(str(save_path), best_crop)
         
         print(f"[學習完成] 已保存新樣本到: {save_path}")
         print(f"[學習完成] Track {track_id} 學習到 {candidate_name}, 最佳距離: {best_distance:.4f}")

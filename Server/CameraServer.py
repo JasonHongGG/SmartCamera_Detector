@@ -1,5 +1,5 @@
 from flask import Flask, Response, request, jsonify
-from Manager.HttpManager import HttpManager, httpManager
+from Manager.HttpManager import HttpManager, httpMgr
 from CameraProcessor import CarmeraProcessor
 
 class CameraServer:
@@ -27,16 +27,16 @@ class CameraServer:
         
         @self.app.route('/capture')
         def capture():
-            return Response(httpManager.get_frame("current"), mimetype='image/jpeg')
+            return Response(httpMgr.get_frame("current"), mimetype='image/jpeg')
                
         @self.app.route('/stream')
         def stream():
-            return Response(httpManager.generate_frames("current"),
+            return Response(httpMgr.generate_frames("current"),
                             mimetype='multipart/x-mixed-replace; boundary=frame')
             
         @self.app.route('/<type>/stream')
         def video_feed(type):
-            return Response(httpManager.generate_frames(type),
+            return Response(httpMgr.generate_frames(type),
                             mimetype='multipart/x-mixed-replace; boundary=frame')
         
         @self.app.route('/detection/<type>', methods=['POST'])
@@ -56,7 +56,7 @@ class CameraServer:
 
         @self.app.route('/motion/info')
         def get_motion_info():
-            motion_info = httpManager.get_motion_info()
+            motion_info = httpMgr.get_motion_info()
             return jsonify(motion_info)
         
         @self.app.route('/motion/sensitivity', methods=['POST'])
@@ -71,7 +71,7 @@ class CameraServer:
 
         @self.app.route('/face/info')
         def get_face_info():
-            face_info = httpManager.get_face_info()
+            face_info = httpMgr.get_face_info()
             return jsonify(face_info)
         
         @self.app.route('/crossline/lines', methods=['POST'])
@@ -82,7 +82,7 @@ class CameraServer:
             image_height = data.get('image_height', 480)
             
             # 清空現有線條
-            self.processor.crossLineMgr.clear_lines()
+            self.processor.crossLineMgr.clearLines()
 
             # 如果沒有線段，表示清除所有線段
             if not lines_data:
@@ -100,7 +100,7 @@ class CameraServer:
                 if (0 <= start_x <= image_width and 0 <= start_y <= image_height and
                     0 <= end_x <= image_width and 0 <= end_y <= image_height):
                         
-                    self.processor.crossLineMgr.add_line((start_x, start_y), (end_x, end_y))
+                    self.processor.crossLineMgr.addLine((start_x, start_y), (end_x, end_y))
                     
                     added_lines.append({
                         'index': i,
@@ -123,18 +123,44 @@ class CameraServer:
         
         @self.app.route('/crossline/info')
         def get_crossline_info():
-            crossline_info = httpManager.get_crossline_info()
+            crossline_info = httpMgr.get_crossline_info()
             return jsonify(crossline_info)
 
         @self.app.route('/storage/image/<filename>', methods=['GET'])
         def get_image(filename):
-            image_data = httpManager.get_image(filename)
+            image_data = httpMgr.get_image(filename)
             if image_data:
                 return jsonify(image_data)
             else:
                 return jsonify({'status': 'error', 'message': 'Image not found'}), 404
 
+        @self.app.route('/storage/image/batch', methods=['POST'])
+        def get_batch_images():
+            data = request.get_json() # 取得 JSON body
+
+            if not data or 'filenames' not in data:
+                return jsonify({"error": "Missing 'filenames' field"}), 400
+
+            filenames = data['filenames']
+
+            print(f"Requesting batch images: {filenames}")
+            images = []
+            for filename in filenames:
+                image_info = httpMgr.get_image(filename)
+                if image_info:
+                    images.append(image_info)
+
+            if images:
+                return jsonify(images)
+            else:
+                return jsonify({'status': 'error', 'message': 'No images found'}), 404
+
         @self.app.route('/storage/images', methods=['GET'])
         def get_all_images():
-            images = httpManager.get_all_images()
+            images = httpMgr.get_all_images()
             return jsonify(images)
+        
+        @self.app.route('/storage/images/metadata', methods=['GET'])
+        def get_all_images_metadata():
+            metadata = httpMgr.get_all_images_metadata()
+            return jsonify(metadata)

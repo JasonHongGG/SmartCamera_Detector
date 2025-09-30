@@ -52,3 +52,9 @@ class OCSortManager:
                 pts = np.array(self.track_paths[track_id], dtype=np.int32)
                 cv2.polylines(frame, [pts], isClosed=False, color=(0,255,255), thickness=2)
             cv2.putText(frame, label, (x1, y1 - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
+
+
+    def start(self, frame, bboxes, scores):
+        tracks = self.objectTrack(frame, bboxes, scores)
+        self.draw(frame, tracks)
+        return tracks

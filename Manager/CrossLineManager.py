@@ -25,7 +25,7 @@ class CrossLineManager:
             self.lines[0][1] = (x, y)
             self.drawing = False
 
-    def is_cross_line(self, center, track_id):
+    def isCrossLine(self, center, track_id):
         if track_id not in self.prev_center:
             self.prev_center[track_id] = center
             return False
@@ -51,7 +51,7 @@ class CrossLineManager:
         self.prev_center[track_id] = center
         return crossed
 
-    def draw_line(self, frame):
+    def drawLine(self, frame):
         for i, line in enumerate(self.lines):
             # 不同線條使用不同顏色
             colors = [(0, 0, 255), (0, 255, 0), (255, 0, 0), (255, 255, 0), (255, 0, 255), (0, 255, 255)]
@@ -62,9 +62,9 @@ class CrossLineManager:
             cv2.putText(frame, f"L{i}", (mid_point[0] + 5, mid_point[1] - 5), 
                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
 
-    def add_line(self, start_point, end_point):
+    def addLine(self, start_point, end_point):
         self.lines.append([start_point, end_point])
         return len(self.lines) - 1  # 回傳新線的索引
 
-    def clear_lines(self):
+    def clearLines(self):
         self.lines = [] 

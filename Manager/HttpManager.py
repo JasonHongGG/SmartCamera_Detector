@@ -169,5 +169,19 @@ class HttpManager:
         else:
             print(f"圖片目錄不存在: {image_dir}")
             return []
+        
+    def get_all_images_metadata(self):
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        image_dir = os.path.join(current_dir, "../Storage/Image")
+        
+        if os.path.exists(image_dir):
+            images_metadata = []
+            for filename in os.listdir(image_dir):
+                if filename.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.gif')):
+                    images_metadata.append(filename)
+            return images_metadata
+        else:
+            print(f"圖片目錄不存在: {image_dir}")
+            return []
 
-httpManager = HttpManager()
+httpMgr = HttpManager()
