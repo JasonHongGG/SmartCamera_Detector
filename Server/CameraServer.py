@@ -125,4 +125,16 @@ class CameraServer:
         def get_crossline_info():
             crossline_info = httpManager.get_crossline_info()
             return jsonify(crossline_info)
-            
+
+        @self.app.route('/storage/image/<filename>', methods=['GET'])
+        def get_image(filename):
+            image_data = httpManager.get_image(filename)
+            if image_data:
+                return jsonify(image_data)
+            else:
+                return jsonify({'status': 'error', 'message': 'Image not found'}), 404
+
+        @self.app.route('/storage/images', methods=['GET'])
+        def get_all_images():
+            images = httpManager.get_all_images()
+            return jsonify(images)

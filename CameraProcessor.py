@@ -2,7 +2,7 @@ import cv2
 import os
 import time
 from Core.MotionDetector.MotionDetector import MotionDetector
-from Core.MotionTracker.MotionTracker import MotionTracker
+# from Core.MotionTracker.MotionTracker import MotionTracker
 from Core.FaceRecognition.FaceRecognition import FaceRecognition
 from Manager.KeyboardManager import KeyboardManager, KeyboardLayoutCode
 from Manager.HttpManager import HttpManager, httpManager
@@ -22,7 +22,7 @@ class CarmeraProcessor:
         self.setup_camera_properties()
         
         self.motion_detector = MotionDetector(self.headless)
-        self.motion_tracker = MotionTracker(self.headless)
+        # self.motion_tracker = MotionTracker(self.headless)
         self.face_recognizer = FaceRecognition(self.headless)
         self.crossLineMgr = CrossLineManager(cv_window_name = "Face Recognition", headless = self.headless)
         
@@ -62,6 +62,7 @@ class CarmeraProcessor:
             return False
             
         current_height, current_width = frame.shape[:2]
+        print(f"Current frame size: {current_width}x{current_height}")
         new_size = (current_width, current_height)
         
         if self.current_frame_size != new_size:
