@@ -26,7 +26,7 @@ class CarmeraProcessor:
         # self.motion_tracker = MotionTracker(self.headless)
         self.face_recognizer = FaceRecognition(self.headless)
         self.crossLineMgr = CrossLineManager(cv_window_name = "Face Recognition", headless = self.headless)
-        self.pipleline = MotionPipeline(self.headless) 
+        self.pipeline = MotionPipeline(self.headless) 
         
         # http parameter
         self.motion_enable = False

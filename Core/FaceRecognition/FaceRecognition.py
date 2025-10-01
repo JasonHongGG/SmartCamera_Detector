@@ -58,26 +58,29 @@ class FaceRecognition:
         # 追蹤
         tracks = self.trackerMgr.objectTrack(small_frame, bboxes, scores)
 
-        results = []
+        info = []
         for (x1, y1, x2, y2, track_id) in tracks:
             small_crop, crop = self.getCrop(int(x1), int(y1), int(x2), int(y2), frame, small_frame, self.frame_resize)
             name = faceMgr.recognizeFaces(small_crop, crop, track_id)
 
             # resize 回原大小
-            results.append((
-                int(x1 / self.frame_resize),
-                int(y1 / self.frame_resize),
-                int(x2 / self.frame_resize),
-                int(y2 / self.frame_resize),
-                track_id,
-                name
-            ))
-
-        return results
+            info.append({
+                        "track_id": track_id,
+                        "name": name,  # 如果已經追中到就用快取的
+                        "bbox": (int(x1 / self.frame_resize),
+                                int(y1 / self.frame_resize),
+                                int(x2 / self.frame_resize),
+                                int(y2 / self.frame_resize),)
+                    })
+        return info
     
     def draw(self, frame, face_info):
         # 先畫所有的方框和 ID
-        for left, top, right, bottom, track_id, name in face_info:
+        for face in face_info:
+            left, top, right, bottom = face["bbox"]
+            track_id = face["track_id"]
+            name = face["name"]
+
             line_width = (right - left) // 3
             line_height = (bottom - top) // 3
             cv2.line(frame, (left, top), (left + line_width, top), (0, 255, 0), 2)

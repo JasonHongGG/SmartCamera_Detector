@@ -53,6 +53,10 @@ class CameraServer:
             elif type == 'crossline':
                 self.processor.crossLine_enable = enabled
                 return jsonify({'status': 'success', 'message': f'Cross line detection {"enabled" if enabled else "disabled"}'})
+            elif type == 'pipeline':
+                self.processor.pipeline_enable = enabled
+                return jsonify({'status': 'success', 'message': f'Motion pipeline {"enabled" if enabled else "disabled"}'})
+
 
         @self.app.route('/motion/info')
         def get_motion_info():

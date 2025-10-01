@@ -14,6 +14,7 @@ class App:
         self.processor.motion_enable = False
         self.processor.face_enable = False
         self.processor.crossLine_enable = False
+        self.processor.pipeline_enable = False
 
     def printPrefixInfo(self):
         print("="*50)

@@ -82,14 +82,14 @@ class MotionPipeline:
         cv2.putText(frame, f"Face Flag: {self.face_flag}", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
 
         for person in info:
-            x1, y1, x2, y2 = person["bbox"]
+            left, top, right, bottom = person["bbox"]
             track_id = person["track_id"]
             name = person["name"]
             label = f"ID:{track_id}"
-            cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-            cv2.putText(frame, label, (x1 + 2 , y1 - 40), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-            frame = fontMgr.cv2AddChineseText(frame, name, (x1 + 2 , y1 - 40))
-       
+            cv2.rectangle(frame, (left, top), (right, bottom), (0, 255, 0), 2)
+            cv2.putText(frame, label, (left + 2 , top - 40), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+            frame = fontMgr.cv2AddChineseText(frame, name, (left + 2 , top - 40))
+
         return frame
     
     def start(self, frame):

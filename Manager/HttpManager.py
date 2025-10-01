@@ -53,6 +53,7 @@ class HttpManager:
             'personNames': "", # name, name, name, ....
             'lastDetection': "",  # current timestamp 
         }
+        self.pipeline_info_lock = threading.Lock()
 
 
     # opencv 處理完後更新畫面
@@ -61,7 +62,7 @@ class HttpManager:
             self.frames[stream_type] = frame.copy()
 
     # 為 Http 提供畫面
-    def get_frame(self, stream_type='original'):
+    def get_frame(self, stream_type='current'):
         with self.locks[stream_type]:
             frame = self.frames.get(stream_type)
             if frame is not None:
@@ -70,7 +71,7 @@ class HttpManager:
                     return buffer.tobytes()
         return None
 
-    def generate_frames(self, stream_type='original'):
+    def generate_frames(self, stream_type='current'):
         while True:
             frame_bytes = self.get_frame(stream_type)
             if frame_bytes:
@@ -90,7 +91,7 @@ class HttpManager:
     def update_face_info(self, face_info_list):
         with self.face_info_lock:
             self.face_info['faceCount'] = len(face_info_list)
-            self.face_info['faceNames'] = ", ".join(name for (x1, y1, x2, y2, track_id, name) in face_info_list)
+            self.face_info['faceNames'] = ", ".join(face["name"] for face in face_info_list)
             self.face_info['lastDetection'] = time.strftime("%Y/%m/%d %H:%M:%S", time.localtime())
 
     def get_face_info(self):
