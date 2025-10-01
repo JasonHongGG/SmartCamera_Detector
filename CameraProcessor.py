@@ -4,7 +4,7 @@ import time
 from Core.MotionDetector.MotionDetector import MotionDetector
 # from Core.MotionTracker.MotionTracker import MotionTracker
 from Core.FaceRecognition.FaceRecognition import FaceRecognition
-from Core.MotionTriggeredRecognition.MotionTriggeredRecognition import MotionTriggeredRecognition
+from Core.MotionPipeline.MotionPipeline import MotionPipeline
 from Manager.KeyboardManager import KeyboardManager, KeyboardLayoutCode
 from Manager.HttpManager import HttpManager, httpMgr
 from Manager.CrossLineManager import CrossLineManager
@@ -26,13 +26,13 @@ class CarmeraProcessor:
         # self.motion_tracker = MotionTracker(self.headless)
         self.face_recognizer = FaceRecognition(self.headless)
         self.crossLineMgr = CrossLineManager(cv_window_name = "Face Recognition", headless = self.headless)
-        self.mtr = MotionTriggeredRecognition(self.headless) 
+        self.pipleline = MotionPipeline(self.headless) 
         
         # http parameter
         self.motion_enable = False
         self.face_enable = False
         self.crossLine_enable = False
-        self.mtr_enable = False
+        self.pipeline_enable = False
 
         # camera reconnection
         self.consecutive_failures = 0
@@ -103,10 +103,10 @@ class CarmeraProcessor:
                     httpMgr.update_frame('crossline', crossline_frame)
 
             # Motion Triggered Recognition
-            if self.mtr_enable:
-                mtr_frame, mtr_info = self.mtr.start(frame.copy())
-                # httpMgr.update_frame('mtr', mtr_frame)
-                # httpMgr.update_mtr_info(mtr_info)
+            if self.pipeline_enable:
+                pipeline_frame, pipeline_info = self.pipeline.start(frame.copy())
+                httpMgr.update_frame('pipeline', pipeline_frame)
+                httpMgr.update_pipeline_info(pipeline_info)
                     
             # tracker_frame = self.motion_tracker.start(frame.copy())
             httpMgr.update_frame('current', frame)

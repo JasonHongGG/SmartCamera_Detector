@@ -13,7 +13,8 @@ class HttpManager:
             'current': None,
             'motion': None,
             'face': None,
-            'crossline': None
+            'crossline': None,
+            'pipeline': None
         }
         
         # 為每個流創建獨立的鎖
@@ -21,7 +22,8 @@ class HttpManager:
             'current': threading.Lock(),
             'motion': threading.Lock(),
             'face': threading.Lock(),
-            'crossline': threading.Lock()
+            'crossline': threading.Lock(),
+            'pipeline': threading.Lock()
         }
 
         # motion 資訊
@@ -44,9 +46,14 @@ class HttpManager:
             'lastDetection': "",  # current timestamp 
         }
         self.crossline_info_lock = threading.Lock()
-        
-        
-        self.frame_times = []
+
+        # pipeline 資訊
+        self.pipeline_info = {
+            'personCount': 0,
+            'personNames': "", # name, name, name, ....
+            'lastDetection': "",  # current timestamp 
+        }
+
 
     # opencv 處理完後更新畫面
     def update_frame(self, stream_type, frame):
@@ -79,15 +86,13 @@ class HttpManager:
     def get_motion_info(self):
         with self.motion_info_lock:
             return self.motion_info.copy()
-
-    # 更新人臉辨識資訊
+            
     def update_face_info(self, face_info_list):
         with self.face_info_lock:
             self.face_info['faceCount'] = len(face_info_list)
             self.face_info['faceNames'] = ", ".join(name for (x1, y1, x2, y2, track_id, name) in face_info_list)
             self.face_info['lastDetection'] = time.strftime("%Y/%m/%d %H:%M:%S", time.localtime())
 
-    # 取得人臉辨識資訊
     def get_face_info(self):
         with self.face_info_lock:
             return self.face_info.copy()
@@ -101,6 +106,16 @@ class HttpManager:
     def get_crossline_info(self):
         with self.crossline_info_lock:
             return self.crossline_info.copy()
+        
+    def update_pipeline_info(self, pipeline_info_list):
+        with self.pipeline_info_lock:
+            self.pipeline_info['personCount'] = len(pipeline_info_list)
+            self.pipeline_info['personNames'] = ", ".join(person["name"] for person in pipeline_info_list)
+            self.pipeline_info['lastDetection'] = time.strftime("%Y/%m/%d %H:%M:%S", time.localtime())
+
+    def get_pipeline_info(self):
+        with self.pipeline_info_lock:
+            return self.pipeline_info.copy()
         
     # 取得儲存的圖片
     def _format_file_size(self, size_bytes):

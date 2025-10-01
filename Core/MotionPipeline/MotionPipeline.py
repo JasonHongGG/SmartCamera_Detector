@@ -11,7 +11,7 @@ class State(Enum):
     MOTION_DETECTED = 0
     PERSON_DETECTED = 1
 
-class MotionTriggeredRecognition:
+class MotionPipeline:
     def __init__(self, headless=False):
         self.headless = headless
         self.state = State.MOTION_DETECTED
@@ -97,6 +97,6 @@ class MotionTriggeredRecognition:
         frame = self.draw(frame, info)
 
         if not self.headless:
-            cv2.imshow("MotionTriggeredRecognition", frame)
+            cv2.imshow("MotionPipeline", frame)
 
         return frame, info

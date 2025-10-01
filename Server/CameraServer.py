@@ -125,6 +125,11 @@ class CameraServer:
         def get_crossline_info():
             crossline_info = httpMgr.get_crossline_info()
             return jsonify(crossline_info)
+        
+        @self.app.route('/pipeline/info')
+        def get_pipeline_info():
+            pipeline_info = httpMgr.get_pipeline_info()
+            return jsonify(pipeline_info)
 
         @self.app.route('/storage/image/<filename>', methods=['GET'])
         def get_image(filename):
