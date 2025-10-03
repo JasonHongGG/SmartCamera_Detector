@@ -4,6 +4,7 @@ import threading
 import time
 import os
 import base64
+import imutils
 from PIL import Image
 
 class HttpManager:
@@ -130,7 +131,7 @@ class HttpManager:
         else:
             return f"{size_bytes} bytes"
         
-    def get_image(self, filename):
+    def get_image(self, filename, target_width=None):
         current_dir = os.path.dirname(os.path.abspath(__file__))
         image_dir = os.path.join(current_dir, "../Storage/Image")
         filepath = os.path.join(image_dir, filename)
@@ -148,15 +149,23 @@ class HttpManager:
                 # 優先使用PIL檢測的格式，若無則使用副檔名
                 image_type = image_format if image_format else file_extension
                 
-                # 讀取圖片數據
-                with open(filepath, "rb") as f:
-                    image_data = f.read()
-                    encoded_image = base64.b64encode(image_data).decode('utf-8')
-                
                 # 轉換檔案大小
                 file_size_bytes = os.path.getsize(filepath)
                 file_size_str = self._format_file_size(file_size_bytes)
+
+                # 讀取圖片數據
+                if target_width is None:
+                    with open(filepath, "rb") as f:
+                        image_data = f.read()
+                        encoded_image = base64.b64encode(image_data).decode('utf-8')
                 
+                else:
+                    img = cv2.imread(filepath)
+                    resized_img = imutils.resize(img, width=target_width)
+                    _, buffer = cv2.imencode('.png', resized_img)
+                    encoded_image = base64.b64encode(buffer).decode('utf-8')
+                    print(f"Resized {filename} to width: {target_width}")
+
                 return {
                     'type': image_type,
                     'filename': filename,

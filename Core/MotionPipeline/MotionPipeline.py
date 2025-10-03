@@ -5,6 +5,7 @@ from Core.MotionDetector.MotionDetector import MotionDetector
 from Manager.YoloManager import YoloManager
 from Manager.OCSortManager import OCSortManager
 from Manager.FontManager import fontMgr
+from Manager.LineAlarmManager import LineAlarmManager
 from Core.FaceRecognition.FaceManager import faceMgr
 
 class State(Enum):
@@ -24,7 +25,23 @@ class MotionPipeline:
         self.face_flag = False
 
         self.cache = {}  # {track_id: {"name": str}} # 快取已識別的人臉
+
+        # 新增：每個 track 的告警狀態，確保同一 track_id 最多觸發兩次 (person, face)
+        self.alert_state = {}  # { track_id: {"person_alerted": bool, "face_alerted": bool} } 
         
+    # alarm (順序一定是 person -> face)
+    def personAlarm(self, frame, track_id):
+        if track_id not in self.alert_state:
+            self.alert_state[track_id] = {"person_alerted": False, "face_alerted": False}
+        if not self.alert_state[track_id]["person_alerted"]:
+            LineAlarmManager.triggerAlarm(frame.copy(), f"Motion Pipeline: 有陌生人!!! ID:{track_id}", track_id)
+            self.alert_state[track_id]["person_alerted"] = True
+    
+    def faceAlarm(self, frame, track_id, name):
+        if name != "Unknown" and "學習中" not in name and not self.alert_state[track_id]["face_alerted"]:
+            LineAlarmManager.triggerAlarm(frame.copy(), f"Motion Pipeline: 偵測到臉! ID:{track_id} Name:{name}", track_id)
+            self.alert_state[track_id]["face_alerted"] = True
+
     def detect(self, frame):
         info = []
         self.motion_flag = False
@@ -52,20 +69,25 @@ class MotionPipeline:
                 # 有偵測到人則進入人臉辨識
                 name = "Unknown"
                 for (x1, y1, x2, y2, track_id) in tracks:
-                    crop = frame[y1:y2, x1:x2]
-                    small_crop = cv2.resize(crop, (0,0), fx=0.5, fy=0.5)
-                    face = faceMgr.face_app.get(crop)
-                    if face:
-                        self.face_flag = True
-                        name = faceMgr.recognizeFaces(small_crop, crop, track_id)
-                
+                    self.personAlarm(frame, track_id)
+
+                    # 如果沒有在 cache 裡面，才進行人臉辨識
+                    if track_id not in self.cache:
+                        crop = frame[y1:y2, x1:x2]
+                        small_crop = cv2.resize(crop, (0,0), fx=0.5, fy=0.5)
+                        face = faceMgr.face_app.get(crop)
+                        if face:
+                            self.face_flag = True
+                            name = faceMgr.recognizeFaces(small_crop, crop, track_id)
+                            self.faceAlarm(frame, track_id, name)
+
                     info.append({
                         "track_id": track_id,
                         "name": self.cache.get(track_id, {"name": name})["name"],  # 如果已經追中到就用快取的
                         "bbox": (x1, y1, x2, y2)
                     })
 
-                    # 有辨識出且未在 cache
+                    # 有辨識出名子且未在 cache
                     if track_id not in self.cache and name != "Unknown" and "學習中" not in name:
                         self.cache[track_id] = {"name": name}
                     

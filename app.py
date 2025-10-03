@@ -19,7 +19,7 @@ class App:
     def printPrefixInfo(self):
         print("="*50)
         print(f"攝像頭索引: {os.environ.get('CAMERA_INDEX', 0)}")
-        print(f"Web 服務地址: http://127.0.0.1:self.")
+        print(f"Web 服務地址: http://127.0.0.1:5000")
         print("按 Ctrl+C 停止系統")
         print("="*50)
 

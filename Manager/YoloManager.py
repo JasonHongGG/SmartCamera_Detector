@@ -8,6 +8,8 @@ class YoloManager:
         model_path = os.path.join(base_dir, "Models", model_name)
         model_path = os.path.normpath(model_path) # 先處理 .. 和 . 等相對路徑
         self.model = YOLO(model_path)
+        self.person_class_ids = [int(k) for k, v in self.model.names.items() if v.lower() == "person"] # 取得 class ids 對應 "person"
+        self.conf_threshold = 0.5
 
     def objectDetect(self, frame):
         bboxes, class_ids, scores = [], [], []
@@ -16,7 +18,9 @@ class YoloManager:
             x1, y1, x2, y2 = map(int, result.xyxy[0])
             conf = result.conf[0]
             cls = int(result.cls[0]) # self.objectDetectionModel.names[cls] 取 name
-            if conf > 0.5:  # 只顯示置信度大於 0.5 的物體
+
+            # 只保留 person 類別且信心度高於閾值的偵測結果
+            if cls in self.person_class_ids and conf > self.conf_threshold:
                 bboxes.append((x1, y1, x2, y2))
                 class_ids.append(cls)
                 scores.append(conf)

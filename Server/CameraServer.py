@@ -151,11 +151,12 @@ class CameraServer:
                 return jsonify({"error": "Missing 'filenames' field"}), 400
 
             filenames = data['filenames']
+            width = data.get('width', None)
 
             print(f"Requesting batch images: {filenames}")
             images = []
             for filename in filenames:
-                image_info = httpMgr.get_image(filename)
+                image_info = httpMgr.get_image(filename, width)
                 if image_info:
                     images.append(image_info)
 
